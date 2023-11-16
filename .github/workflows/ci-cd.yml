@@ -50,7 +50,8 @@ jobs:
         with:
             ssh-private-key: ${{ secrets.FASTLANE_DEPLOY_KEY }}
       - name: Fastlane
-        run: fastlane match_dist
+        if: matrix.os == 'macos-latest' && vars.SCRATCH_SHOULD_SIGN
+        run: fastlane circleci
       - name: Build
         timeout-minutes: 30 # macOS notarization can take a while
         env:
