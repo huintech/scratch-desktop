@@ -49,10 +49,6 @@ jobs:
         run: npm ci
       - name: Test
         run: npm run test
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-            python-version: '3.10' 
       - name: Check Python version
         run: python --version 
       - name: Setup Keys for Fastlane
