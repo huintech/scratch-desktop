@@ -55,44 +55,44 @@ jobs:
             python-version: '3.10' 
       - name: Check Python version
         run: python --version 
-    #   - name: Setup Keys for Fastlane
-    #     uses: webfactory/ssh-agent@v0.7.0
-    #     with:
-    #         ssh-private-key: ${{ secrets.FASTLANE_DEPLOY_KEY }}
-    #   - name: Fastlane
-    #     if: matrix.os == 'macos-latest' && vars.SCRATCH_SHOULD_SIGN
-    #     run: fastlane circleci
-    #   - name: Build
-    #     timeout-minutes: 30 # macOS notarization can take a while
-    #     env:
-    #       # TODO: fix whatever is causing excessive memory usage during build
-    #       NODE_OPTIONS: --max-old-space-size=4096
-    #       # These will be blank on macOS and on unsigned builds
-    #       # macOS CSC info was set by Fastlane above
-    #       WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-    #       WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-    #     run: npm run ${{ vars.SCRATCH_SHOULD_SIGN && 'dist' || 'distDev' }}
-    #   - name: Zip MAS-Dev build
-    #     if: matrix.os == 'macos-latest'
-    #     run: |
-    #       NPM_APP_VERSION="`node -pe "require('./package.json').version"`"
-    #       cd dist/mas-dev
-    #       ditto -v -c -k --sequesterRsrc --keepParent --zlibCompressionLevel 9 \
-    #         Scratch*.app ../mas-dev-${NPM_APP_VERSION}.zip
-    #   - name: Upload macOS artifacts
-    #     uses: actions/upload-artifact@v2
-    #     if: matrix.os == 'macos-latest'
-    #     with:
-    #       name: macOS
-    #       path: |
-    #         dist/Scratch*.dmg
-    #         dist/mas/Scratch*.pkg
-    #         dist/mas-dev-*.zip
-    #   - name: Upload Windows artifacts
-    #     uses: actions/upload-artifact@v2
-    #     if: matrix.os == 'windows-latest'
-    #     with:
-    #       name: Windows
-    #       path: |
-    #         dist/Scratch*.appx
-    #         dist/Scratch*.exe
+      - name: Setup Keys for Fastlane
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+            ssh-private-key: ${{ secrets.FASTLANE_DEPLOY_KEY }}
+      - name: Fastlane
+        if: matrix.os == 'macos-latest' && vars.SCRATCH_SHOULD_SIGN
+        run: fastlane circleci
+      - name: Build
+        timeout-minutes: 30 # macOS notarization can take a while
+        env:
+          # TODO: fix whatever is causing excessive memory usage during build
+          NODE_OPTIONS: --max-old-space-size=4096
+          # These will be blank on macOS and on unsigned builds
+          # macOS CSC info was set by Fastlane above
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: npm run ${{ vars.SCRATCH_SHOULD_SIGN && 'dist' || 'distDev' }}
+      - name: Zip MAS-Dev build
+        if: matrix.os == 'macos-latest'
+        run: |
+          NPM_APP_VERSION="`node -pe "require('./package.json').version"`"
+          cd dist/mas-dev
+          ditto -v -c -k --sequesterRsrc --keepParent --zlibCompressionLevel 9 \
+            Scratch*.app ../mas-dev-${NPM_APP_VERSION}.zip
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v2
+        if: matrix.os == 'macos-latest'
+        with:
+          name: macOS
+          path: |
+            dist/Scratch*.dmg
+            dist/mas/Scratch*.pkg
+            dist/mas-dev-*.zip
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v2
+        if: matrix.os == 'windows-latest'
+        with:
+          name: Windows
+          path: |
+            dist/Scratch*.appx
+            dist/Scratch*.exe
