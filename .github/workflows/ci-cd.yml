@@ -45,9 +45,12 @@ jobs:
         run: npm ci
       - name: Test
         run: npm run test
+      - name: Setup Keys for Fastlane
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+            ssh-private-key: ${{ secrets.FASTLANE_DEPLOY_KEY }}
       - name: Fastlane
-        if: matrix.os == 'macos-latest' && vars.SCRATCH_SHOULD_SIGN
-        run: fastlane circleci
+        run: fastlane match_dist
       - name: Build
         timeout-minutes: 30 # macOS notarization can take a while
         env:
