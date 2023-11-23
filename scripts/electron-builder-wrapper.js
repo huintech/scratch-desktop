@@ -53,7 +53,7 @@ const runBuilder = function (wrapperConfig, target) {
     if (wrapperConfig.doSign &&
         (target.name.indexOf('nsis') === 0) &&
         !(childEnvironment.CSC_LINK || childEnvironment.WIN_CSC_LINK)) {
-        throw new Error(`Signing NSIS build requires CSC_LINK or WIN_CSC_LINK`);
+        // throw new Error(`Signing NSIS build requires CSC_LINK or WIN_CSC_LINK`);
     }
     const platformFlag = getPlatformFlag();
     let allArgs = [platformFlag, target.name];
@@ -69,8 +69,17 @@ const runBuilder = function (wrapperConfig, target) {
             allArgs.push('--c.mac.identity=null');
         }
     }
+    if (target.platform === 'win32' && wrapperConfig.mode !== 'dev') {
+        allArgs.push('--ia32', '--x64');
+    }
     if (!wrapperConfig.doPackage) {
         allArgs.push('--dir', '--c.compression=store');
+    }
+    if (wrapperConfig.doPublish) {
+        allArgs.push('--publish', 'always');
+    } else {
+        // Prevent electron build from automatically publishing in github action
+        allArgs.push('--publish', 'never');
     }
     allArgs = allArgs.concat(wrapperConfig.builderArgs);
     console.log(`running electron-builder with arguments: ${allArgs}`);
@@ -97,6 +106,7 @@ const runBuilder = function (wrapperConfig, target) {
  * same time but doing so limits has unwanted side effects on both macOS and Windows (see function body).
  */
 const calculateTargets = function (wrapperConfig) {
+    const masDevProfile = 'mas-dev.provisionprofile';
     const availableTargets = {
         macAppStore: {
             name: 'mas',
@@ -110,12 +120,12 @@ const calculateTargets = function (wrapperConfig) {
             name: 'dmg',
             platform: 'darwin'
         },
-        microsoftStore: {
-            name: 'appx:ia32 appx:x64',
-            platform: 'win32'
-        },
+        // microsoftStore: {
+        //     name: 'appx:ia32 appx:x64',
+        //     platform: 'win32'
+        // },
         windowsDirectDownload: {
-            name: 'nsis:ia32',
+            name: 'nsis',
             platform: 'win32'
         }
     };
@@ -123,7 +133,7 @@ const calculateTargets = function (wrapperConfig) {
     switch (process.platform) {
     case 'win32':
         // Run in two passes so we can skip signing the AppX for distribution through the MS Store.
-        targets.push(availableTargets.microsoftStore);
+        // targets.push(availableTargets.microsoftStore);
         targets.push(availableTargets.windowsDirectDownload);
         break;
     case 'darwin':
@@ -155,11 +165,15 @@ const parseArgs = function () {
     const scriptArgs = process.argv.slice(2); // remove `node` and `this-script.js`
     const builderArgs = [];
     let mode = 'dev'; // default
+    let arch = null;
 
     for (const arg of scriptArgs) {
         const modeSplit = arg.split(/--mode(\s+|=)/);
+        const archSplit = arg.split(/--arch(\s+|=)/);
         if (modeSplit.length === 3) {
             mode = modeSplit[2];
+        } else if (archSplit.length === 3) {
+            arch = archSplit[2];
         } else {
             builderArgs.push(arg);
         }
@@ -167,26 +181,40 @@ const parseArgs = function () {
 
     let doPackage;
     let doSign;
+    let doPublish;
 
     switch (mode) {
     case 'dev':
         doPackage = true;
         doSign = false;
+        doPublish = false;
         break;
     case 'dir':
         doPackage = false;
         doSign = false;
+        doPublish = false;
         break;
     case 'dist':
         doPackage = true;
-        doSign = true;
+        // doSign = true;
+        doSign = false;
+        doPublish = false;
+        break;
+    case 'publish':
+        doPackage = true;
+        // doSign = true; // skip code signing before getting a certificate
+        doSign = false;
+        doPublish = true;
+        break;
     }
 
     return {
         builderArgs,
         doPackage, // false = build to directory
         doSign,
-        mode
+        doPublish,
+        mode,
+        arch
     };
 };
 

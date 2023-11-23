@@ -23,6 +23,7 @@ Let's assume that you want to make a new release, version `3.999.0`, correspondi
    2. `git pull --all --tags`
    3. `git checkout develop`
    4. `npm install --save-dev 'scratch-gui@github:scratchfoundation/scratch-gui#scratch-desktop-v3.999.0'`
+   4. `npm install --save-dev 'huintech@github:huintech/scratch-arduino-gui#scratch-desktop-v0.8.0'`
    5. `git add package.json package-lock.json`
    6. Make sure the app works, the diffs look reasonable, etc.
    7. `git commit -m "bump scratch-gui to scratch-desktop-v3.999.0"`

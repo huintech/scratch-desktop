@@ -7,12 +7,31 @@ import {promisify} from 'util';
 import argv from './argv';
 import {getFilterForExtension} from './FileFilters';
 import telemetry from './ScratchDesktopTelemetry';
+import Updater from './ScratchDesktopUpdater';
+import DesktopLink from './ScratchDesktopLink';
 import MacOSMenu from './MacOSMenu';
 import log from '../common/log.js';
 import {productName, version} from '../../package.json';
 
+import {v4 as uuidv4} from 'uuid';
+import ElectronStore from 'electron-store';
+import formatMessage from 'format-message';
+import locales from 'scratch-arduino-l10n/locales/desktop-msgs';
+
+const storage = new ElectronStore();
+const desktopLink = new DesktopLink();
+
+formatMessage.setup({translations: locales});
+
 // suppress deprecation warning; this will be the default in Electron 9
 app.allowRendererProcessReuse = true;
+
+// allow connect to localhost
+app.commandLine.appendSwitch('allow-insecure-localhost', 'true');
+
+// enable gpu and ignore gpu blacklist
+app.commandLine.hasSwitch('enable-gpu');
+app.commandLine.hasSwitch('ignore-gpu-blacklist');
 
 telemetry.appWasOpened();
 
@@ -219,6 +238,17 @@ const createAboutWindow = () => {
     return window;
 };
 
+const createLicenseWindow = () => {
+    const window = createWindow({
+        width: _windows.main.width * 0.8,
+        height: _windows.main.height * 0.8,
+        parent: _windows.main,
+        search: 'route=license',
+        title: `${productName} License`
+    });
+    return window;
+};
+
 const createPrivacyWindow = () => {
     const window = createWindow({
         width: _windows.main.width * 0.8,
@@ -227,6 +257,25 @@ const createPrivacyWindow = () => {
         search: 'route=privacy',
         title: `${productName} Privacy Policy`
     });
+    return window;
+};
+
+const createLoadingWindow = () => {
+    const window = createWindow({
+        width: 800,
+        height: 150,
+        frame: false,
+        resizable: false,
+        transparent: true,
+        hasShadow: false,
+        search: 'route=loading',
+        title: `Loding ${productName} ${version}`
+    });
+
+    window.once('ready-to-show', () => {
+        window.show();
+    });
+
     return window;
 };
 
@@ -291,6 +340,10 @@ const createMainWindow = () => {
         title: `${productName} ${version}` // something like "Scratch 3.14"
     });
     const webContents = window.webContents;
+
+    // const update = new Updater(webContents, desktopLink.resourceServer);
+    // remote.initialize();
+    // remote.enable(webContents);
 
     webContents.session.on('will-download', (willDownloadEvent, downloadItem) => {
         const isProjectSave = getIsProjectSave(downloadItem);
@@ -373,6 +426,40 @@ const createMainWindow = () => {
         }
     });
 
+    ipcMain.on('loading-completed', () => {
+        if (!storage.has('userId')) {
+            storage.set('userId', uuidv4());
+        }
+        const userId = storage.get('userId');
+        webContents.send('setUserId', userId);
+
+        webContents.send('setPlatform', process.platform);
+
+        update.checkUpdateAtStartup();
+    });
+
+    ipcMain.on('reqeustCheckUpdate', () => {
+        update.reqeustCheckUpdate();
+    });
+
+    ipcMain.on('reqeustUpdate', () => {
+        update.reqeustUpdate()
+            .then(() => {
+                setTimeout(() => {
+                    console.log(`INFO: App will restart after 3 seconds`);
+                    app.relaunch();
+                    app.exit();
+                }, 1000 * 3);
+            })
+            .catch(err => {
+                console.error(`ERR!: update failed: ${err}`);
+            });
+    });
+
+    ipcMain.on('abortUpdate', () => {
+        update.abortUpdate();
+    });
+
     window.once('ready-to-show', () => {
         window.show();
     });
@@ -395,6 +482,12 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
     telemetry.appWillClose();
+});
+
+app.on('activate', () => {
+    if (_windows.main === null) {
+        createMainWindow();
+    }
 });
 
 // work around https://github.com/MarshallOfSound/electron-devtools-installer/issues/122
@@ -430,30 +523,107 @@ app.on('ready', () => {
         });
     }
 
-    _windows.main = createMainWindow();
-    _windows.main.on('closed', () => {
-        delete _windows.main;
-    });
-    _windows.about = createAboutWindow();
-    _windows.about.on('close', event => {
-        event.preventDefault();
-        _windows.about.hide();
-    });
-    _windows.privacy = createPrivacyWindow();
-    _windows.privacy.on('close', event => {
-        event.preventDefault();
-        _windows.privacy.hide();
+    ipcMain.on('clearCache', () => {
+        desktopLink.clearCache();
     });
 
-    _windows.usb = createUsbWindow();
+    ipcMain.on('installDriver', () => {
+        desktopLink.installDriver(() => {
+            dialog.showMessageBox(_windows.main, {
+                type: 'info',
+                message: `${formatMessage({
+                    id: 'index.systemRestartRequired',
+                    default: 'Installation is complete, please restart the system.',
+                    description: 'prompt for restart system'
+                })}`
+            });
+        });
+    });
+
+    // create a loading windows let user know the app is starting
+    _windows.loading = createLoadingWindow();
+    _windows.loading.once('show', () => {
+        desktopLink.updateCahce();
+        desktopLink.start()
+            .then(() => {
+                _windows.main = createMainWindow();
+                _windows.main.on('closed', () => {
+                    delete _windows.main;
+                });
+                _windows.about = createAboutWindow();
+                _windows.about.on('close', event => {
+                    event.preventDefault();
+                    _windows.about.hide();
+                });
+                _windows.license = createLicenseWindow();
+                _windows.license.on('close', event => {
+                    event.preventDefault();
+                    _windows.license.hide();
+                });
+                _windows.privacy = createPrivacyWindow();
+                _windows.privacy.on('close', event => {
+                    event.preventDefault();
+                    _windows.privacy.hide();
+                });
+
+                // after finsh load progress show main window and close loading window
+                _windows.main.show();
+                _windows.loading.close();
+                delete _windows.loading;
+            })
+            .catch(async e => {
+                // TODO: report error via telemetry
+                await dialog.showMessageBox(_windows.loading, {
+                    type: 'error',
+                    title: formatMessage({
+                        id: 'index.initialResourcesFailedTitle',
+                        default: 'Failed to initialize resources',
+                        description: 'Title for initialize resources failed'
+                    }),
+                    message: `${formatMessage({
+                        id: 'index.initializeResourcesFailed',
+                        default: 'Initialize resources failed',
+                        description: 'prompt for initialize resources failed'
+                    })}`,
+                    detail: e
+                });
+
+                app.exit();
+            });
+    });
+
+    // _windows.main = createMainWindow();
+    // _windows.main.on('closed', () => {
+    //     delete _windows.main;
+    // });
+    // _windows.about = createAboutWindow();
+    // _windows.about.on('close', event => {
+    //     event.preventDefault();
+    //     _windows.about.hide();
+    // });
+    // _windows.privacy = createPrivacyWindow();
+    // _windows.privacy.on('close', event => {
+    //     event.preventDefault();
+    //     _windows.privacy.hide();
+    // });
+    //
+    // _windows.usb = createUsbWindow();
 });
 
 ipcMain.on('open-about-window', () => {
     _windows.about.show();
 });
 
+ipcMain.on('open-license-window', () => {
+    _windows.license.show();
+});
+
 ipcMain.on('open-privacy-policy-window', () => {
     _windows.privacy.show();
+});
+
+ipcMain.on('set-locale', (event, arg) => {
+    formatMessage.setup({locale: arg});
 });
 
 // start loading initial project data before the GUI needs it so the load seems faster

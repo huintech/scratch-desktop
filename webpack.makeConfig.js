@@ -7,6 +7,9 @@ const electronPath = require('electron');
 const webpack = require('webpack');
 const merge = require('webpack-merge');
 
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+const MONACO_DIR = path.resolve(__dirname, './node_modules/monaco-editor');
+
 // PostCss
 const autoprefixer = require('autoprefixer');
 const postcssImport = require('postcss-import');
@@ -24,9 +27,7 @@ const makeConfig = function (defaultConfig, options) {
         plugins: [
             '@babel/plugin-syntax-dynamic-import',
             '@babel/plugin-transform-async-to-generator',
-            '@babel/plugin-proposal-object-rest-spread',
-            '@babel/plugin-transform-nullish-coalescing-operator',
-            '@babel/plugin-transform-optional-chaining'
+            '@babel/plugin-proposal-object-rest-spread'
         ],
         presets: [
             ['@babel/preset-env', {targets: {electron: electronVersion}}]
@@ -73,15 +74,17 @@ const makeConfig = function (defaultConfig, options) {
                 },
                 { // coped from scratch-gui
                     test: /\.css$/,
+                    exclude: MONACO_DIR,
                     use: [{
                         loader: 'style-loader'
                     }, {
                         loader: 'css-loader',
                         options: {
-                            modules: true,
+                            modules: {
+                                localIdentName: '[name]_[local]_[hash:base64:5]'
+                            },
                             importLoaders: 1,
-                            localIdentName: '[name]_[local]_[hash:base64:5]',
-                            camelCase: true
+                            localsConvention: 'camelCase'
                         }
                     }, {
                         loader: 'postcss-loader',
@@ -126,7 +129,7 @@ const makeConfig = function (defaultConfig, options) {
             alias: {
                 // act like scratch-gui has this line in its package.json:
                 //   "browser": "./src/index.js"
-                'scratch-gui$': path.resolve(__dirname, 'node_modules', 'scratch-gui', 'src', 'index.js')
+                'scratch-arduino-gui$': path.resolve(__dirname, 'node_modules', 'scratch-arduino-gui', 'src', 'index.js')
             }
         }
     });

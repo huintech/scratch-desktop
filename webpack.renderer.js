@@ -22,25 +22,26 @@ module.exports = defaultConfig =>
             plugins: [
                 new CopyWebpackPlugin([
                     {
-                        from: path.join(getModulePath('scratch-blocks'), 'media'),
+                        from: path.join(getModulePath('scratch-arduino-blocks'), 'media'),
                         to: 'static/blocks-media/default'
                     },
                     {
-                        from: path.join(getModulePath('scratch-blocks'), 'media'),
+                        from: path.join(getModulePath('scratch-arduino-blocks'), 'media'),
                         to: 'static/blocks-media/high-contrast'
                     },
                     {
-                        from: path.join(getModulePath('scratch-gui'),
+                        // from: path.join(getModulePath('scratch-gui'),
+                        from: path.join(getModulePath('scratch-arduino-gui'),
                             'src', 'lib', 'themes', 'high-contrast', 'blocks-media'),
                         to: 'static/blocks-media/high-contrast',
                         force: true
                     },
                     {
                         from: 'extension-worker.{js,js.map}',
-                        context: path.join(getModulePath('scratch-vm'), 'dist', 'web')
+                        context: path.join(getModulePath('scratch-arduino-vm'), 'dist', 'web')
                     },
                     {
-                        from: path.join(getModulePath('scratch-gui'), 'src', 'lib', 'libraries', '*.json'),
+                        from: path.join(getModulePath('scratch-arduino-gui'), 'src', 'lib', 'libraries', '*.json'),
                         to: 'static/libraries',
                         flatten: true
                     }

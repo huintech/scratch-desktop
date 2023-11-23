@@ -1,9 +1,24 @@
 directories:
   buildResources: buildResources
   output: dist
-appId: edu.mit.scratch.scratch-desktop
-productName: "Scratch 3"
-publish: # empty provider list = don't publish
+extraFiles: ['LICENSE', 'LICENSE.ScratchFoundation', 'TRADEMARK']
+
+appId: net.huintech.scratch-desktop
+productName: "CoconutScratchDesktop"
+publish:
+  - provider: github
+  - provider: spaces
+    name: coconut
+    path: desktop
+    region: sgp1
+artifactName: "Coconut-Scratch-Desktop_v${version}_${os}_${arch}.${ext}"
+
+fileAssociations:
+  ext: sb3
+  name: Scratch project file
+  role: Editor
+  icon: buildResources/ScratchDesktop.ico
+
 mac:
   category: public.app-category.education
   entitlements: buildResources/entitlements.mac.plist
@@ -20,28 +35,31 @@ mac:
   artifactName: "Scratch ${version}.${ext}"
   target:
     - dmg
-    - mas
+#    - mas
 dmg:
   title: "Scratch ${version}"
-mas:
-  category: public.app-category.education
-  entitlements: buildResources/entitlements.mas.plist
-  entitlementsInherit: buildResources/entitlements.mas.inherit.plist
-  hardenedRuntime: false
-  icon: buildResources/ScratchDesktop.icns
-masDev:
-  type: development
-  provisioningProfile: build/Development_edu.mit.scratch.scratch-desktop.provisionprofile
+#mas:
+#  category: public.app-category.education
+#  entitlements: buildResources/entitlements.mas.plist
+#  entitlementsInherit: buildResources/entitlements.mas.inherit.plist
+#  hardenedRuntime: false
+#  icon: buildResources/ScratchDesktop.icns
+#masDev:
+#  type: development
+#  provisioningProfile: build/Development_edu.mit.scratch.scratch-desktop.provisionprofile
+
 win:
   icon: buildResources/ScratchDesktop.ico
   target:
-    - appx
+#    - appx
     - nsis
-appx:
-  identityName: ScratchFoundation.ScratchDesktop
-  publisherDisplayName: "Scratch Foundation"
-  publisher: "CN=2EC43DF1-469A-4119-9AB9-568A0A1FF65F"
-  artifactName: "Scratch ${version} ${arch}.${ext}"
+#appx:
+#  identityName: ScratchFoundation.ScratchDesktop
+#  publisherDisplayName: "Scratch Foundation"
+#  publisher: "CN=2EC43DF1-469A-4119-9AB9-568A0A1FF65F"
+#  artifactName: "Scratch ${version} ${arch}.${ext}"
 nsis:
   oneClick: false # allow user to choose per-user or per-machine
-  artifactName: "Scratch ${version} Setup.${ext}"
+  allowToChangeInstallationDirectory: true
+  include: buildResources/installer.nsh
+#  artifactName: "Scratch ${version} Setup.${ext}"
